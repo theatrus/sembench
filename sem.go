@@ -65,9 +65,11 @@ func (sem *condSemaphore) Acquire() {
 func (sem *condSemaphore) Release() {
 	sem.m.Lock()
 	lastCount := sem.count
-	if lastCount <= sem.max {
+
+	if lastCount < sem.max {
+		sem.count++
 		sem.c.Signal()
 	}
-	sem.count++
+
 	sem.m.Unlock()
 }
