@@ -52,14 +52,13 @@ func (sem *condSemaphore) Acquire() {
 		sem.m.Unlock()
 		return
 	}
-	sem.m.Unlock()
 	for {
 		sem.c.Wait()
 		if sem.count > 0 {
 			sem.count--
+			sem.m.Unlock()
 			return
 		}
-		sem.m.Unlock()
 	}
 }
 
