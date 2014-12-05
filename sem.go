@@ -1,5 +1,9 @@
 package sembench
 
+import (
+	"sync"
+)
+
 type Semaphore interface {
 	Acquire()
 	Release()
@@ -23,4 +27,48 @@ func NewChannelSemaphore(max int, initial int) Semaphore {
 		sem.channel <- 0
 	}
 	return &sem
+}
+
+type condSemaphore struct {
+	m *sync.Mutex
+	c *sync.Cond
+	max int
+	count int
+}
+
+func NewCondSemaphore(max int, initial int) Semaphore {
+	m := &sync.Mutex{}
+	c := sync.NewCond(m)
+	
+	sem := condSemaphore{max: max, count: initial, m: m, c: c}
+
+	return &sem
+}
+
+func (sem *condSemaphore) Acquire() {
+	sem.m.Lock()
+	if sem.count > 0 {
+		sem.count--
+		sem.m.Unlock()
+		return
+	}
+	sem.m.Unlock()
+	for {
+		sem.c.Wait()
+		if sem.count > 0 {
+			sem.count--
+			return
+		}
+		sem.m.Unlock()
+	}
+}
+
+func (sem *condSemaphore) Release() {
+	sem.m.Lock()
+	lastCount := sem.count
+	if lastCount <= sem.max {
+		sem.c.Signal()
+	}
+	sem.count++
+	sem.m.Unlock()
 }
